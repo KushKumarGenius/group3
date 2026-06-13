@@ -4,6 +4,10 @@
 
 package frc.robot;
 
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.RobotBase;
+
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean
  * constants. This class should not be used for any other purpose. All constants should be declared
@@ -13,7 +17,32 @@ package frc.robot;
  * constants are needed, to reduce verbosity.
  */
 public final class Constants {
-  public static class OperatorConstants {
-    public static final int kDriverControllerPort = 0;
-  }
+  public static final Mode simMode = Mode.SIM;
+  public static final Mode currentMode = RobotBase.isReal() ? Mode.REAL : simMode;
+  public static final double globalDelta_s = 0.02; // 0.02 = 50Hz
+  public static final double globalDelta_Hz = 1.0 / globalDelta_s; // 0.02 = 50Hz
+
+  private static boolean allianceFound = false;
+  private static boolean isRed = true;
+
+    public static boolean isRedAlliance() {
+        if (!allianceFound && DriverStation.getAlliance().isPresent()) {
+            isRed = DriverStation.getAlliance().get() == Alliance.Red;
+            allianceFound = false;
+        }
+        return isRed;
+    }
+
+    public static final boolean verboseLogging = true;
+
+    public enum Mode {
+        /** Running on a real robot. */
+        REAL,
+
+        /** Running a physics simulator. */
+        SIM,
+
+        /** Replaying from a log file. */
+        REPLAY
+    }
 }

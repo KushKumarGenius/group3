@@ -1,101 +1,245 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
+
+// Copyright 2021-2024 FRC 6328
+// http://github.com/Mechanical-Advantage
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// version 3 as published by the Free Software Foundation or
+// available in the root directory of this project.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
 
 package frc.robot;
 
-import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.RobotBase;
+import edu.wpi.first.wpilibj.RobotController;
+import edu.wpi.first.wpilibj.Threads;
+import edu.wpi.first.wpilibj.GenericHID.RumbleType;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import frc.robot.generated.TunerConstants;
+//import frc.robot.subsystems.drive.Drive;
+//import frc.robot.subsystems.shooter.Shooter;
+//import frc.robot.subsystems.tracking.Tracking;
+import frc.robot.util.MTimer;
+
+import org.littletonrobotics.junction.LogFileUtil;
+import org.littletonrobotics.junction.LoggedRobot;
+import org.littletonrobotics.junction.Logger;
+import org.littletonrobotics.junction.networktables.NT4Publisher;
+import org.littletonrobotics.junction.wpilog.WPILOGReader;
+import org.littletonrobotics.junction.wpilog.WPILOGWriter;
+
+import com.ctre.phoenix6.swerve.SwerveModuleConstants;
+import com.ctre.phoenix6.swerve.SwerveModuleConstants.DriveMotorArrangement;
+import com.ctre.phoenix6.swerve.SwerveModuleConstants.SteerMotorArrangement;
 
 /**
- * The methods in this class are called automatically corresponding to each mode, as described in
- * the TimedRobot documentation. If you change the name of this class or the package after creating
- * this project, you must also update the Main.java file in the project.
+ * The VM is configured to automatically run this class, and to call the
+ * functions corresponding to each mode, as
+ * described in the TimedRobot documentation. If you change the name of this
+ * class or the package after creating this
+ * project, you must also update the build.gradle file in the project.
  */
-public class Robot extends TimedRobot {
-  private Command m_autonomousCommand;
+public class Robot extends LoggedRobot {
 
-  private final RobotContainer m_robotContainer;
+   // private Drive drive;
+    //private Tracking tracking;
+    //private Shooter shooter;
 
-  /**
-   * This function is run when the robot is first started up and should be used for any
-   * initialization code.
-   */
-  public Robot() {
-    // Instantiate our RobotContainer.  This will perform all our button bindings, and put our
-    // autonomous chooser on the dashboard.
-    m_robotContainer = new RobotContainer();
-  }
+    private boolean lastState = false;
 
-  /**
-   * This function is called every 20 ms, no matter the mode. Use this for items like diagnostics
-   * that you want ran during disabled, autonomous, teleoperated and test.
-   *
-   * <p>This runs after the mode specific periodic functions, but before LiveWindow and
-   * SmartDashboard integrated updating.
-   */
-  @Override
-  public void robotPeriodic() {
-    // Runs the Scheduler.  This is responsible for polling buttons, adding newly-scheduled
-    // commands, running already-scheduled commands, removing finished or interrupted commands,
-    // and running subsystem periodic() methods.  This must be called from the robot's periodic
-    // block in order for anything in the Command-based framework to work.
-    CommandScheduler.getInstance().run();
-  }
+    //private ControlScheme scheme;
 
-  /** This function is called once each time the robot enters Disabled mode. */
-  @Override
-  public void disabledInit() {}
+    private MTimer pipelineSwitch = new MTimer();
 
-  @Override
-  public void disabledPeriodic() {}
+    private CommandXboxController cmdController = new CommandXboxController(0);
 
-  /** This autonomous runs the autonomous command selected by your {@link RobotContainer} class. */
-  @Override
-  public void autonomousInit() {
-    m_autonomousCommand = m_robotContainer.getAutonomousCommand();
+    /**
+     * This function is run when the robot is first started up and should be used
+     * for any initialization code.
+     */
+    @Override
+   /* public void robotInit() {
 
-    // schedule the autonomous command (example)
-    if (m_autonomousCommand != null) {
-      CommandScheduler.getInstance().schedule(m_autonomousCommand);
+
+
+        Logger.recordMetadata("ProjectName", BuildConstants.MAVEN_NAME);
+        Logger.recordMetadata("BuildDate", BuildConstants.BUILD_DATE);
+        Logger.recordMetadata("GitSHA", BuildConstants.GIT_SHA);
+        Logger.recordMetadata("GitDate", BuildConstants.GIT_DATE);
+        Logger.recordMetadata("GitBranch", BuildConstants.GIT_BRANCH);
+
+        switch (/BuildConstants.DIRTY) {
+            case 0:
+                Logger.recordMetadata("GitDirty", "All changes committed");
+                break;
+            case 1:
+                Logger.recordMetadata("GitDirty", "Uncomitted changes");
+                break;
+            default:
+                Logger.recordMetadata("GitDirty", "Unknown");
+                break;
+        }
+
+        // Set up data receivers & replay source
+        switch (Constants.currentMode) {
+            case REAL:
+                // Running on a real robot, log to a USB stick ("/U/logs")
+                Logger.addDataReceiver(new WPILOGWriter("U/logs/" + BuildConstants.GIT_BRANCH));
+                Logger.addDataReceiver(new NT4Publisher());
+                break;
+
+            case SIM:
+                // Running a physics simulator, log to NT
+                Logger.addDataReceiver(new NT4Publisher());
+                break;
+
+            case REPLAY:
+                // Replaying a log, set up replay source
+                setUseTiming(false); // Run as fast as possible
+                String logPath = LogFileUtil.findReplayLog();
+                Logger.setReplaySource(new WPILOGReader(logPath));
+                Logger.addDataReceiver(new WPILOGWriter(LogFileUtil.addPathSuffix(logPath, "_sim")));
+                break;
+
+        }
+
+        // See http://bit.ly/3YIzFZ6 for more information on timestamps in AdvantageKit.
+        // Logger.disableDeterministicTimestamps()
+
+        // Start AdvantageKit logger
+        Logger.start();
+
+        // Init control scheme
+        //scheme = new ControlScheme();
+
+        // init subsystems
+        //drive = Drive.getInstance();
+        //tracking = Tracking.getInstance();
+        //shooter = Shooter.getInstance();
+        
+        // Check for valid swerve config
+        var modules = new SwerveModuleConstants[] {
+                TunerConstants.FrontLeft,
+                TunerConstants.FrontRight,
+                TunerConstants.BackLeft,
+                TunerConstants.BackRight
+        };
+        for (var constants : modules) {
+            if (constants.DriveMotorType != DriveMotorArrangement.TalonFX_Integrated
+                    || constants.SteerMotorType != SteerMotorArrangement.TalonFX_Integrated) {
+                throw new RuntimeException(
+                        "You are using an unsupported swerve configuration, which this template does not support without manual customization. The 2025 release of Phoenix supports some swerve configurations which were not available during 2025 beta testing, preventing any development and support from the AdvantageKit developers.");
+            }
+        }
+
+        
+
+    }*/
+
+    /** This function is called periodically during all modes. */
+   // @Override
+    public void robotPeriodic() {
+        // Switch thread to high priority to improve loop timing
+        Threads.setCurrentThreadPriority(true, 99);
+
+        // Runs the Scheduler. This is responsible for polling buttons, adding
+        // newly-scheduled commands, running already-scheduled commands, removing
+        // finished or interrupted commands, and running subsystem periodic() methods.
+        // This must be called from the robot's periodic block in order for anything in
+        // the Command-based framework to work.
+
+        if (!DriverStation.isAutonomous()) {
+            //scheme.periodic();
+        }
+
+        if (OI.DR.getPOV() == 180) {
+            //drive.zeroGyro();
+        }
+
+        //tracking.periodic();
+        //drive.periodic();
+        //shooter.periodic();
+
+        PerfTracker.periodic();
+        Threads.setCurrentThreadPriority(false, 10);
     }
-  }
 
-  /** This function is called periodically during autonomous. */
-  @Override
-  public void autonomousPeriodic() {}
-
-  @Override
-  public void teleopInit() {
-    // This makes sure that the autonomous stops running when
-    // teleop starts running. If you want the autonomous to
-    // continue until interrupted by another command, remove
-    // this line or comment it out.
-    if (m_autonomousCommand != null) {
-      m_autonomousCommand.cancel();
+    /** This function is called once when the robot is disabled. */
+    @Override
+    public void disabledInit() {
+        pipelineSwitch.reset();
     }
-  }
 
-  /** This function is called periodically during operator control. */
-  @Override
-  public void teleopPeriodic() {}
+    /** This function is called periodically when disabled. */
+    @Override
+    public void disabledPeriodic() {
+        boolean buttonPressed = RobotController.getUserButton();
 
-  @Override
-  public void testInit() {
-    // Cancels all running commands at the start of test mode.
-    CommandScheduler.getInstance().cancelAll();
-  }
+        if (buttonPressed && !lastState) {
+            //drive.toggleBrake();
+        }
 
-  /** This function is called periodically during test mode. */
-  @Override
-  public void testPeriodic() {}
+        lastState = buttonPressed;
 
-  /** This function is called once when the robot is first started up. */
-  @Override
-  public void simulationInit() {}
+        if(pipelineSwitch.after(0.5)) {
+            pipelineSwitch.reset();
+            //Tracking.getInstance().setPipeline(Constants.isRedAlliance() ? 0 : 1);
+        }
 
-  /** This function is called periodically whilst in simulation. */
-  @Override
-  public void simulationPeriodic() {}
+        OI.DR.setRumble(RumbleType.kBothRumble, 0);
+    }
+
+    /** Runs at the start of auto */
+    @Override
+    public void autonomousInit() {
+        // maybe put something
+    }
+
+    /** This function is called periodically during autonomous. */
+    @Override
+    public void autonomousPeriodic() {
+        // run auto!
+    }
+
+    /** This function is called once when teleop is enabled. */
+    @Override
+    public void teleopInit() {
+        //scheme.init();
+    }
+
+    /** This function is called periodically during operator control. */
+    @Override
+    public void teleopPeriodic() {
+        if(RobotBase.isSimulation()){
+            //Tracking.getInstance().disable();
+        } else if(OI.DR.getAButtonReleased()) {
+            //Tracking.getInstance().toggleEnabled();
+        }
+    }
+
+    /** This function is called once when test mode is enabled. */
+    @Override
+    public void testInit() {
+    }
+
+    /** This function is called periodically during test mode. */
+    @Override
+    public void testPeriodic() {
+    }
+
+    
+    @Override
+    public void simulationInit() {
+    }
+
+   
+    @Override
+    public void simulationPeriodic() {
+        
+    }
 }
