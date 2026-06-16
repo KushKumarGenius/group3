@@ -15,7 +15,10 @@ public interface ElevatorIO {
         public boolean atBottom = false;
     }
 
-    public default void updateInputs(ElevatorIOInputs inputs) {}
+
+    public default void updateInputs(ElevatorIOInputs inputs) {
+        
+    }
     public default void setElevatorMotorVoltage(double volts) {}
     public default void setElevatorPosition(double position)  {}
 

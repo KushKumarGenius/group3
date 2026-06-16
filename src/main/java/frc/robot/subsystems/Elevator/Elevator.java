@@ -2,10 +2,15 @@ package frc.robot.subsystems.Elevator;
 
 import org.littletonrobotics.junction.Logger;
 
+import edu.wpi.first.math.controller.PIDController;
+
 
 public class Elevator extends StateMachineSubsystemBase<ElevatorStates> {
     private final ElevatorIO io;
     private final ElevatorSim sim;
+    private final PIDController pid;
+    ElevatorIO.ElevatorIOInputs inputs = new ElevatorIO.ElevatorIOInputs();
+    private double targetPosition = 0;
     
 
     public Elevator(ElevatorIO io, ElevatorSim sim) {
@@ -13,52 +18,70 @@ public class Elevator extends StateMachineSubsystemBase<ElevatorStates> {
         this.io = io;
         this.sim = sim;
         queueState(ElevatorStates.IDLE);
+        pid = new PIDController(1.0, 0.0, 0.0);
     }
 
-    public void update() {
-        ElevatorIO.ElevatorIOInputs inputs = new ElevatorIO.ElevatorIOInputs();
-        io.updateInputs(inputs);
 
-        switch (getState()) {
-            case MOVING_UP:
-                if (inputs.atTop) {
-                    queueState(ElevatorStates.IDLE);
-                    io.stopMoving();
-                }
-                break;
-            case MOVING_DOWN:
-                if (inputs.atBottom) {
-                    queueState(ElevatorStates.IDLE);
-                    io.stopMoving();
-                }
-                break;
-            case IDLE:
-                // Do nothing
-                break;
-        }
-    }
 
-    public void handleStateMachine(){
-     
-    }
 
     @Override
     public void outputPeriodic() {
         // Logger.recordOutput("Intake/moveMotorDegps", inputs.flyVel_rps);
         Logger.recordOutput("Elevator/ElevatorState", getState());
     }
+
+    @Override
+    public void handleStateMachine() {
+        io.updateInputs(inputs);
+
+        switch (getState()) {
+            case MOVING_UP:
+                if (inputs.atTop) {
+                    queueState(ElevatorStates.IDLE);
+                }
+                else{
+                    targetPosition = ElevatorConstants.ELEVATOR_MAX_HEIGHT;
+                    moveUp();
+                }
+                break;
+            case MOVING_DOWN:
+                if (inputs.atBottom) {
+                    queueState(ElevatorStates.IDLE);
+                }
+                else {
+                    targetPosition = ElevatorConstants.ELEVATOR_MIN_HEIGHT;
+                    moveDown();
+                }
+                break;
+            case IDLE:
+                io.stopMoving();
+                break;
+        }
+     
+    }
+    
     public void moveUp() {
-        queueState(ElevatorStates.MOVING_UP);
-        io.setElevatorMotorVoltage(12.0); // Example voltage to move up
+        double volts = pid.calculate(inputs.elevatorPositionMeters, targetPosition);
+        io.setElevatorMotorVoltage(volts);
+        
+        inputs.atTop = inputs.elevatorPositionMeters >= ElevatorConstants.ELEVATOR_MAX_HEIGHT;
+        goUp();
     }
 
     public void moveDown() {
-        queueState(ElevatorStates.MOVING_DOWN);
-        io.setElevatorMotorVoltage(-12.0); // Example voltage to move down
+        double volts = pid.calculate(inputs.elevatorPositionMeters, targetPosition);
+        io.setElevatorMotorVoltage(volts);
+
+        inputs.atBottom = inputs.elevatorPositionMeters <= ElevatorConstants.ELEVATOR_MIN_HEIGHT;
+        goDown();
+        
     }
 
-    public void stop() {
-        queueState(ElevatorStates.IDLE);
-        io.stopMoving();
+    public void goUp() {
+        queueState(ElevatorStates.MOVING_UP);
+    }
+
+    public void goDown() {
+        queueState(ElevatorStates.MOVING_DOWN);
     }
 }
