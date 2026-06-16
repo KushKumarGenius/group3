@@ -20,8 +20,7 @@ import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.generated.TunerConstants;
-import frc.robot.subsystems.drive.Drive;
-import frc.robot.subsystems.tracking.Tracking;
+
 import frc.robot.util.MTimer;
 
 import org.littletonrobotics.junction.LogFileUtil;
@@ -44,12 +43,10 @@ import com.ctre.phoenix6.swerve.SwerveModuleConstants.SteerMotorArrangement;
  */
 public class Robot extends LoggedRobot {
 
-    private Drive drive;
-    private Tracking tracking;
+
 
     private boolean lastState = false;
 
-    private ControlScheme scheme;
 
     private MTimer pipelineSwitch = new MTimer();
 
@@ -110,11 +107,6 @@ public class Robot extends LoggedRobot {
         Logger.start();
 
         // Init control scheme
-        scheme = new ControlScheme();
-
-        // init subsystems
-        drive = Drive.getInstance();
-        tracking = Tracking.getInstance();
         
         // Check for valid swerve config
         var modules = new SwerveModuleConstants[] {
@@ -147,16 +139,7 @@ public class Robot extends LoggedRobot {
         // This must be called from the robot's periodic block in order for anything in
         // the Command-based framework to work.
 
-        if (!DriverStation.isAutonomous()) {
-            scheme.periodic();
-        }
-
-        if (OI.DR.getPOV() == 180) {
-            drive.zeroGyro();
-        }
-
-        tracking.periodic();
-        drive.periodic();
+        
 
         PerfTracker.periodic();
         Threads.setCurrentThreadPriority(false, 10);
@@ -173,16 +156,9 @@ public class Robot extends LoggedRobot {
     public void disabledPeriodic() {
         boolean buttonPressed = RobotController.getUserButton();
 
-        if (buttonPressed && !lastState) {
-            drive.toggleBrake();
-        }
-
+       
         lastState = buttonPressed;
 
-        if(pipelineSwitch.after(0.5)) {
-            pipelineSwitch.reset();
-            Tracking.getInstance().setPipeline(Constants.isRedAlliance() ? 0 : 1);
-        }
 
         OI.DR.setRumble(RumbleType.kBothRumble, 0);
     }
@@ -200,20 +176,7 @@ public class Robot extends LoggedRobot {
     }
 
     /** This function is called once when teleop is enabled. */
-    @Override
-    public void teleopInit() {
-        scheme.init();
-    }
-
-    /** This function is called periodically during operator control. */
-    @Override
-    public void teleopPeriodic() {
-        if(RobotBase.isSimulation()){
-            Tracking.getInstance().disable();
-        } else if(OI.DR.getAButtonReleased()) {
-            Tracking.getInstance().toggleEnabled();
-        }
-    }
+    
 
     /** This function is called once when test mode is enabled. */
     @Override
