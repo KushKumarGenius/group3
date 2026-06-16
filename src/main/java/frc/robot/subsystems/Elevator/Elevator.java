@@ -7,26 +7,20 @@ import edu.wpi.first.math.controller.PIDController;
 
 public class Elevator extends StateMachineSubsystemBase<ElevatorStates> {
     private final ElevatorIO io;
-    private final ElevatorSim sim;
     private final PIDController pid;
     ElevatorIO.ElevatorIOInputs inputs = new ElevatorIO.ElevatorIOInputs();
     private double targetPosition = 0;
     
 
-    public Elevator(ElevatorIO io, ElevatorSim sim) {
+    public Elevator(ElevatorIO io) {
         super("Elevator");
         this.io = io;
-        this.sim = sim;
         queueState(ElevatorStates.IDLE);
         pid = new PIDController(1.0, 0.0, 0.0);
     }
 
-
-
-
     @Override
     public void outputPeriodic() {
-        // Logger.recordOutput("Intake/moveMotorDegps", inputs.flyVel_rps);
         Logger.recordOutput("Elevator/ElevatorState", getState());
     }
 
@@ -62,16 +56,14 @@ public class Elevator extends StateMachineSubsystemBase<ElevatorStates> {
     
     public void moveUp() {
         double volts = pid.calculate(inputs.elevatorPositionMeters, targetPosition);
-        io.setElevatorMotorVoltage(volts);
-        
+        io.setMotorVoltage(volts);
         inputs.atTop = inputs.elevatorPositionMeters >= ElevatorConstants.ELEVATOR_MAX_HEIGHT;
         goUp();
     }
 
     public void moveDown() {
         double volts = pid.calculate(inputs.elevatorPositionMeters, targetPosition);
-        io.setElevatorMotorVoltage(volts);
-
+        io.setMotorVoltage(volts);
         inputs.atBottom = inputs.elevatorPositionMeters <= ElevatorConstants.ELEVATOR_MIN_HEIGHT;
         goDown();
         

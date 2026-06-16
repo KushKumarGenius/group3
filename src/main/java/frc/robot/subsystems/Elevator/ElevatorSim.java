@@ -1,5 +1,6 @@
 package frc.robot.subsystems.Elevator;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N2;
@@ -26,7 +27,16 @@ public class ElevatorSim implements ElevatorIO{
 
     @Override
     public void updateInputs(ElevatorIOInputs inputs) {
-        inputs.elevatorPositionMeters = elevatorPosition;
+
+        elevatorMotorSim.update(ElevatorConstants.CHANGE_IN_TIME);
+        double motorRadiansPerSec = elevatorMotorSim.getAngularVelocityRadPerSec();
+        elevatorVelocity = motorRadiansPerSec * ElevatorConstants.DRUM_RADIUS;
+        elevatorPosition += elevatorVelocity * ElevatorConstants.CHANGE_IN_TIME;
+        elevatorCurrent = elevatorMotorSim.getCurrentDrawAmps();
+
+
+        inputs.elevatorPositionMeters = MathUtil.clamp(elevatorPosition, ElevatorConstants.ELEVATOR_MIN_HEIGHT, ElevatorConstants.ELEVATOR_MAX_HEIGHT);
+        inputs.elevatorMotor_rps = motorRadiansPerSec / (2 * Math.PI);
         inputs.elevatorVelocityMetersPerSec = elevatorVelocity;
         inputs.elevatorMotorVolts = motorVoltage;
         inputs.elevatorMotorCurrent = elevatorCurrent;
@@ -34,21 +44,21 @@ public class ElevatorSim implements ElevatorIO{
         inputs.atBottom = elevatorPosition <= ElevatorConstants.ELEVATOR_MIN_HEIGHT;
     }
 
+    @Override
     public void setMotorVoltage(double voltage) {
         elevatorMotorSim.setInputVoltage(voltage);
     }
 
+    @Override
     public void setMoveVelocity(double velocity_mps) {
         motorVoltage = pid.calculate(elevatorVelocity, velocity_mps);
         elevatorMotorSim.setInputVoltage(motorVoltage);
     }
 
+    @Override
     public void stopMoving() {
         setMoveVelocity(0);
         setMotorVoltage(0);
     }
-
-
-
     
 }

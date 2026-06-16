@@ -1,3 +1,4 @@
+
 // Copyright 2021-2024 FRC 6328
 // http://github.com/Mechanical-Advantage
 //
@@ -20,7 +21,6 @@ import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.generated.TunerConstants;
-
 import frc.robot.util.MTimer;
 
 import org.littletonrobotics.junction.LogFileUtil;
@@ -44,11 +44,11 @@ import com.ctre.phoenix6.swerve.SwerveModuleConstants.SteerMotorArrangement;
 public class Robot extends LoggedRobot {
 
 
-
     private boolean lastState = false;
 
-
     private MTimer pipelineSwitch = new MTimer();
+
+    private CommandXboxController cmdController = new CommandXboxController(0);
 
     /**
      * This function is run when the robot is first started up and should be used
@@ -106,8 +106,10 @@ public class Robot extends LoggedRobot {
         // Start AdvantageKit logger
         Logger.start();
 
-        // Init control scheme
         
+
+        // init subsystems
+  
         // Check for valid swerve config
         var modules = new SwerveModuleConstants[] {
                 TunerConstants.FrontLeft,
@@ -141,6 +143,7 @@ public class Robot extends LoggedRobot {
 
         
 
+
         PerfTracker.periodic();
         Threads.setCurrentThreadPriority(false, 10);
     }
@@ -156,9 +159,15 @@ public class Robot extends LoggedRobot {
     public void disabledPeriodic() {
         boolean buttonPressed = RobotController.getUserButton();
 
-       
+        if (buttonPressed && !lastState) {
+        }
+
         lastState = buttonPressed;
 
+        if(pipelineSwitch.after(0.5)) {
+            pipelineSwitch.reset();
+            
+        }
 
         OI.DR.setRumble(RumbleType.kBothRumble, 0);
     }
@@ -176,7 +185,20 @@ public class Robot extends LoggedRobot {
     }
 
     /** This function is called once when teleop is enabled. */
-    
+    @Override
+    public void teleopInit() {
+       
+    }
+
+    /** This function is called periodically during operator control. */
+    @Override
+    public void teleopPeriodic() {
+        if(RobotBase.isSimulation()){
+
+        } else if(OI.DR.getAButtonReleased()) {
+            
+        }
+    }
 
     /** This function is called once when test mode is enabled. */
     @Override
